@@ -9,9 +9,33 @@ class MoviesController < ApplicationController
     @movie = Movie.find(id) # look up movie by unique ID
     # will render app/views/movies/show.<extension> by default
   end
-
+  
+  def get_sort_state
+    @sort = params[:sort]
+    if params[:sort].nil?
+      @sort =  (session[:sort].nil?) ? :unsorted : session[:sort]
+    end
+    @sort
+  end
+  
+  def get_filter_state
+    @filter = session[:filter]
+    if params[:commit] == 'Refresh'
+      @filter = params[:ratings].keys unless params[:ratings].nil?
+    end
+    @filter = @all_ratings if @filter.nil?
+    @filter
+  end
+  
+  
   def index
-    @movies = Movie.all
+    @sort = params[:sort]
+    @movies = Movie.all.order(@sort)
+    
+  
+
+      
+    
   end
 
   def new
