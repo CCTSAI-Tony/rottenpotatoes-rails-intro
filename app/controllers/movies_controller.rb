@@ -1,5 +1,6 @@
 class MoviesController < ApplicationController
-
+  helper_method :sort_column, :sort_dir
+  
   def movie_params
     params.require(:movie).permit(:title, :rating, :description, :release_date)
   end
@@ -10,37 +11,79 @@ class MoviesController < ApplicationController
     # will render app/views/movies/show.<extension> by default
   end
   
-  def get_sort_state
-    @sort = params[:sort]
-    if params[:sort].nil?
-      @sort =  (session[:sort].nil?) ? :unsorted : session[:sort]
-    end
-    @sort
-  end
-  
-  def get_filter_state
-    @filter = session[:filter]
-    if params[:commit] == 'Refresh'
-      @filter = params[:ratings].keys unless params[:ratings].nil?
-    end
-    @filter = @all_ratings if @filter.nil?
-    @filter
-  end
-  
   
   def index
-    @sort = params[:sort]
-    @movies = Movie.all.order(@sort)
+    if session[:column]==nil or (session[:column] != sort_column and params[:column]!=nil)
+      session[:column] = sort_column
+    end
+    if session[:dir]==nil or (session[:dir] != sort_dir and params[:dir]!=nil)
+      session[:dir] = sort_dir
+    end
+    if session[:ratings].blank? or params[:commit]!=nil
+      session[:ratings] = boxes_checked
+    end
     
-  
+    @all_ratings = Movie.select("DISTINCT rating").map(&:rating)
+    @checked = session[:ratings]
+    if session[:dir] != ""
+      if @checked.empty?
+        @movies = Movie.order("#{session[:column]} #{session[:dir]}").all
+      else
+        @movies = Movie.order("#{session[:column]} #{session[:dir]}").select {|i| @checked.include?(i.rating)? true: false}
+      end
+      if session[:column] == "title"
+        @val = "hilite"
+        @val2 = ""
+      else
+        @val = ""
+        @val2 = "hilite"
+      end
+    else
+      if @checked.empty?
+        @movies = Movie.all
+      else 
+        @movies = Movie.all.select{|i| @checked.include?(i.rating)? true: false}
+      end
+      @val = ""
+      @val2 = ""
+    end
 
-      
-    
   end
-
+  
   def new
     # default: render 'new' template
   end
+  
+  private def boxes_checked
+    if params[:ratings] == nil
+      return []
+    end
+    return params[:ratings].keys
+  end
+  
+  
+  def sort_column
+    if params[:column] == "Movie Title"
+      return "title"
+    elsif params[:column] == "Release Date"
+      return "release_date"
+    else
+      return "title"
+    end
+  end
+  
+  def sort_dir
+    if params[:dir] == "asc"
+      return "asc"
+    elsif params[:dir] == "desc"
+      return "desc"
+    else
+      return ""
+    end
+  end
+
+
+
 
   def create
     @movie = Movie.create!(movie_params)
